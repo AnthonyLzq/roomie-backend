@@ -121,6 +121,68 @@ class Server {
         } catch (error) {
           socket.emit('createError', `Internal server error: ${error.message}`)
         }
+
+        // Listen for chat messages
+        socket.on('chatMessage', async (message: IMessages): Promise<void> => {
+          console.log('chatMessage')
+          console.log(message)
+          socket.broadcast.to(message.room as string).emit('message', {
+            _id : message._id,
+            text: message.text,
+            user: message.user
+          })
+          try {
+            await new ChatRooms({
+              messages: [{
+                _id      : message._id as string,
+                createdAt: message.createdAt as Date,
+                text     : message.text as string,
+                user     : message.user as IUsers
+              }] as IMessages[],
+              name: message.room as string
+            }).process('saveChatMessage')
+          } catch (error) {
+            socket.emit('saveMessageError', `Internal server error: ${error.message}`)
+          }
+        })
+
+        // Broadcast when a user disconnects
+        socket.on('leaveChatRoom', async (currentRoom: DtoChatRooms) => {
+          console.log('currentRoom')
+          console.log(currentRoom)
+          try {
+            const updatedRoom = await new ChatRooms(currentRoom).process('leaveChatRoom')
+            console.log('leaveChatRoom')
+            console.log(updatedRoom)
+
+            if (updatedRoom)
+              if ((updatedRoom as ICustomSuccessResponses | ICustomFailResponses).error) {
+                socket.emit(
+                  'leaveChatRoomError',
+                  (updatedRoom as ICustomSuccessResponses | ICustomFailResponses).message
+                )
+                console.log('leaveChatRoom')
+                console.log((updatedRoom as ICustomSuccessResponses | ICustomFailResponses).message)
+              } else {
+                const roomToReport = updatedRoom as ICustomSuccessResponses
+                if (roomToReport.deletedChatRoom as boolean) {
+                  io.emit('deletedChatRoom', (roomToReport.message as IChatRooms).name)
+                  console.log('deletedChatRoom')
+                  console.log((roomToReport.message as IChatRooms).name)
+                } else {
+                  const roomWithUpdatedInfo = {
+                    connectedUsers: (roomToReport.message as IChatRooms).users.length,
+                    name          : (roomToReport.message as IChatRooms).name
+                  }
+                  io.emit('updateConnectedUsersInRoom', roomWithUpdatedInfo)
+                  console.log('updateConnectedUsersInRoom')
+                  console.log(roomWithUpdatedInfo)
+                }
+              }
+          } catch (error) {
+            socket.emit('leaveError', `Internal server error: ${error.message}`)
+          }
+        })
       })
 
       socket.on('joinChatRoom', async (room: DtoChatRooms): Promise<void> => {
@@ -183,14 +245,14 @@ class Server {
             if (updatedRoom)
               if ((updatedRoom as ICustomSuccessResponses | ICustomFailResponses).error) {
                 socket.emit(
-                  'leaveChatRoom',
+                  'leaveChatRoomError',
                   (updatedRoom as ICustomSuccessResponses | ICustomFailResponses).message
                 )
                 console.log('leaveChatRoom')
                 console.log((updatedRoom as ICustomSuccessResponses | ICustomFailResponses).message)
               } else {
                 const roomToReport = updatedRoom as ICustomSuccessResponses
-                if (roomToReport.deletedChatRoom) {
+                if (roomToReport.deletedChatRoom as boolean) {
                   io.emit('deletedChatRoom', (roomToReport.message as IChatRooms).name)
                   console.log('deletedChatRoom')
                   console.log((roomToReport.message as IChatRooms).name)

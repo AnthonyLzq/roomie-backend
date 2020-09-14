@@ -49,8 +49,7 @@ class ChatRooms {
   private async _createChatRoom (): Promise<
     ICustomSuccessResponses | ICustomFailResponses
   > {
-    const { isPublic, maxUsers, name, password, users } = this
-      ._args as DtoChatRooms
+    const { isPublic, maxUsers, name, password, users } = this._args as DtoChatRooms
 
     try {
       const chatRoom = await ChatRoomsModel.findOne({ name: name as string })

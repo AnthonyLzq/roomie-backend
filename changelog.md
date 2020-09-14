@@ -1,5 +1,12 @@
 # Roomie
 
+## Version 0.7.0
+
+- Implemented:
+  - Events for the host of the chat room.
+
+## Version 0.6.0
+
 - Implemented:
   - Logic to send, broadcast and save messages.
   - Logic to update the lobby when a user left a chat.
