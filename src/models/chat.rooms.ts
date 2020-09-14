@@ -2,21 +2,22 @@ import { Document, model, Schema } from 'mongoose'
 import { IMessages, IUsers } from '../dto-interfaces/chat.room.dto'
 
 interface IChatRooms extends Document {
-  messages       : IMessages[]
-  name           : string
-  password       : string
-  peopleConnected: number
-  type           : boolean
-  users          : IUsers[]
+  isPublic: boolean
+  maxUsers: number
+  messages: IMessages[]
+  name    : string
+  password: string
+  users   : IUsers[]
 }
 
 const Users = new Schema({
-  avatar: String,
-  id    : {
+  _id: {
     required: true,
-    type    : String
+    type    : String,
+    unique  : true
   },
-  name: {
+  avatar: String,
+  name  : {
     required: true,
     type    : String
   }
@@ -43,6 +44,11 @@ const Messages = new Schema({
 
 const ChatRooms = new Schema(
   {
+    isPublic: {
+      default: true,
+      type   : Boolean
+    },
+    maxUsers: Number,
     messages: [Messages],
     name    : {
       required: true,
@@ -51,14 +57,6 @@ const ChatRooms = new Schema(
     password: {
       required: false,
       type    : String
-    },
-    peopleConnected: {
-      default: 1,
-      type   : Number
-    },
-    type: {
-      default: true,
-      type   : Boolean
     },
     users: {
       required: true,

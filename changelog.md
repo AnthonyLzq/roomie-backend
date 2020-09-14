@@ -1,5 +1,9 @@
 # Roomie
 
+## Version 0.3.0
+
+- Logic to join a chat.
+
 ## Version 0.2.0
 
 - Data delivery test using sockets.

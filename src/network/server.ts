@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 /* eslint-disable no-extra-parens */
 import express from 'express'
 import http from 'http'
@@ -6,8 +7,16 @@ import morgan from 'morgan'
 import socketIO from 'socket.io'
 
 import { applyRoutes } from './routes'
-import { DtoChatRooms, IMessages, IUsers } from '../dto-interfaces/chat.room.dto'
-import { ChatRooms } from '../controllers/chat.rooms'
+import {
+  DtoChatRooms
+  // IMessages,
+  // IUsers
+} from '../dto-interfaces/chat.room.dto'
+import {
+  ChatRooms,
+  ICustomFailResponses,
+  ICustomSuccessResponses
+} from '../controllers/chat.rooms'
 
 class Server {
   private _app: express.Application
@@ -83,68 +92,91 @@ class Server {
   private _socketConnection (io: socketIO.Server): void {
     // Run when a client connect
     io.on('connection', async (socket: socketIO.Socket): Promise<void> => {
-      socket.emit('initialLoadRooms', await new ChatRooms().process('initialLoadRooms'))
-      // socket.on('createRoom', (obj: IChatRooms) => {
+      socket.emit(
+        'initialLoadRooms',
+        await new ChatRooms().process('initialLoadRooms')
+      )
 
-      // })
+      socket.on('joinRoom', async (room: DtoChatRooms): Promise<void> => {
+        try {
+          const allowed = await new ChatRooms(room).process('joinAChat')
 
-      // socket.on('joinRoom', (obj: IUsers) => {
-      //   const user = userJoin(socket.id, obj.room, obj.username)
+          if (
+            allowed &&
+            (allowed as ICustomSuccessResponses | ICustomFailResponses).error
+          )
+            socket.emit(
+              'joinError',
+              (allowed as ICustomSuccessResponses | ICustomFailResponses).message
+            )
+          else if (
+            allowed &&
+            !(allowed as ICustomSuccessResponses | ICustomFailResponses).error) {
+            socket.emit(
+              'joinSuccess',
+              (allowed as ICustomSuccessResponses | ICustomFailResponses).message
+            )
+            socket.join(room.name as string)
+          }
+        } catch (error) {
+          console.error(error)
+        }
 
-      //   socket.join(user.room)
+        //   // Welcome to current user
+        //   socket.emit(
+        //     'message',
+        //     formatMessage({
+        //       text    : 'Welcome to Roomie!',
+        //       username: this._botName
+        //     })
+        //   )
 
-      //   // Welcome to current user
-      //   socket.emit(
-      //     'message',
-      //     formatMessage({ text: 'Welcome to Roomie!', username: this._botName })
-      //   )
+        //   // Broadcast when a user connects to the chat room
+        //   socket.broadcast.to(user.room).emit(
+        //     'message',
+        //     formatMessage({
+        //       text    : `${user.username} has joined the chat`,
+        //       username: this._botName
+        //     })
+        //   )
 
-      //   // Broadcast when a user connects to the chat room
-      //   socket.broadcast.to(user.room).emit(
-      //     'message',
-      //     formatMessage({
-      //       text    : `${user.username} has joined the chat`,
-      //       username: this._botName
-      //     })
-      //   )
+        //   // Send users and room info
+        //   io.to(user.room).emit('roomUsers', {
+        //     room : user.room,
+        //     users: getRoomUsers(user.room)
+        //   })
+        // })
 
-      //   // Send users and room info
-      //   io.to(user.room).emit('roomUsers', {
-      //     room : user.room,
-      //     users: getRoomUsers(user.room)
-      //   })
-      // })
+        // // Listen for chat messages
+        // socket.on('chatMessage', (message: string) => {
+        //   const { room, username } = getCurrentUser(socket.id) as IUsers
 
-      // // Listen for chat messages
-      // socket.on('chatMessage', (message: string) => {
-      //   const { room, username } = getCurrentUser(socket.id) as IUsers
+        //   io.to(room as string).emit(
+        //     'message',
+        //     formatMessage({ text: message, username: username as string })
+        //   )
+        // })
 
-      //   io.to(room as string).emit(
-      //     'message',
-      //     formatMessage({ text: message, username: username as string })
-      //   )
-      // })
+        // // Broadcast when a user disconnects
+        // socket.on('disconnect', () => {
+        //   const user = userLeave(socket.id)
 
-      // // Broadcast when a user disconnects
-      // socket.on('disconnect', () => {
-      //   const user = userLeave(socket.id)
+        //   if (user) {
+        //     io.to(user.room).emit(
+        //       'message',
+        //       formatMessage({
+        //         text    : `${user.username} has left the chat`,
+        //         username: this._botName
+        //       })
+        //     )
 
-      //   if (user) {
-      //     io.to(user.room).emit(
-      //       'message',
-      //       formatMessage({
-      //         text    : `${user.username} has left the chat`,
-      //         username: this._botName
-      //       })
-      //     )
-
-      //     // Send users and room info
-      //     io.to(user.room).emit('roomUsers', {
-      //       room : user.room,
-      //       users: getRoomUsers(user.room)
-      //     })
-      //   }
-      // })
+        //     // Send users and room info
+        //     io.to(user.room).emit('roomUsers', {
+        //       room : user.room,
+        //       users: getRoomUsers(user.room)
+        //     })
+        //   }
+      })
     })
   }
 
