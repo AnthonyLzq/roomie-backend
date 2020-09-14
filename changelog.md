@@ -1,5 +1,9 @@
 # Roomie
 
+## Version 0.4.0
+
+- Logic to create a chat.
+
 ## Version 0.3.0
 
 - Logic to join a chat.

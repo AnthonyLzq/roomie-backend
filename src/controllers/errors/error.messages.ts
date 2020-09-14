@@ -1,6 +1,7 @@
 enum ErrorMessagesForChatRooms {
   chatIsFull = 'The requested chat is full',
   chatRoomNotFound = 'Chat room not found',
+  duplicatedChatRoom = 'Duplicated chat room',
   duplicatedUser = 'Duplicated user',
   incorrectPassword = 'Incorrect password',
   problemCreatingAChatRoom = 'There was a problem trying to create the chat',

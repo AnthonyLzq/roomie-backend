@@ -1,5 +1,4 @@
-/* eslint-disable max-len */
-/* eslint-disable no-extra-parens */
+/* eslint-disable max-len, class-methods-use-this, no-extra-parens */
 import express from 'express'
 import http from 'http'
 import mongoose from 'mongoose'
@@ -9,8 +8,6 @@ import socketIO from 'socket.io'
 import { applyRoutes } from './routes'
 import {
   DtoChatRooms
-  // IMessages,
-  // IUsers
 } from '../dto-interfaces/chat.room.dto'
 import {
   ChatRooms,
@@ -88,7 +85,6 @@ class Server {
     await mongoose.connect(process.env.MONGO_URI as string, connection)
   }
 
-  // eslint-disable-next-line class-methods-use-this
   private _socketConnection (io: socketIO.Server): void {
     // Run when a client connect
     io.on('connection', async (socket: socketIO.Socket): Promise<void> => {
@@ -97,29 +93,65 @@ class Server {
         await new ChatRooms().process('initialLoadRooms')
       )
 
-      socket.on('joinRoom', async (room: DtoChatRooms): Promise<void> => {
+      socket.on('createChatRoom', async (room: DtoChatRooms): Promise<void> => {
+        console.log('room')
+        console.log(room)
         try {
-          const allowed = await new ChatRooms(room).process('joinAChat')
+          const createdRoom = await new ChatRooms(room).process('createChatRoom')
+          console.log('createdRoom')
+          console.log(createdRoom)
 
-          if (
-            allowed &&
-            (allowed as ICustomSuccessResponses | ICustomFailResponses).error
-          )
-            socket.emit(
-              'joinError',
-              (allowed as ICustomSuccessResponses | ICustomFailResponses).message
-            )
-          else if (
-            allowed &&
-            !(allowed as ICustomSuccessResponses | ICustomFailResponses).error) {
-            socket.emit(
-              'joinSuccess',
-              (allowed as ICustomSuccessResponses | ICustomFailResponses).message
-            )
-            socket.join(room.name as string)
-          }
+          if (createdRoom)
+            if ((createdRoom as ICustomSuccessResponses | ICustomFailResponses).error) {
+              socket.emit(
+                'createError',
+                (createdRoom as ICustomSuccessResponses | ICustomFailResponses).message
+              )
+              console.log('createError')
+              console.log((createdRoom as ICustomSuccessResponses | ICustomFailResponses).message)
+            } else {
+              socket.emit(
+                'createSuccess',
+                (createdRoom as ICustomSuccessResponses | ICustomFailResponses).message
+              )
+              socket.join(room.name as string)
+              console.log('createSuccess')
+              console.log((createdRoom as ICustomSuccessResponses | ICustomFailResponses).message)
+            }
         } catch (error) {
-          console.error(error)
+          console.log('createError')
+          console.log(`Internal server error: ${error.message}`)
+          socket.emit('createError', `Internal server error: ${error.message}`)
+        }
+      })
+
+      socket.on('joinChatRoom', async (room: DtoChatRooms): Promise<void> => {
+        console.log('room')
+        console.log(room)
+        try {
+          const allowed = await new ChatRooms(room).process('joinChatRoom')
+          console.log('allowed')
+          console.log(allowed)
+
+          if (allowed)
+            if ((allowed as ICustomSuccessResponses | ICustomFailResponses).error) {
+              socket.emit(
+                'joinError',
+                (allowed as ICustomSuccessResponses | ICustomFailResponses).message
+              )
+              console.log('joinError')
+              console.log((allowed as ICustomSuccessResponses | ICustomFailResponses).message)
+            } else {
+              socket.emit(
+                'joinSuccess',
+                (allowed as ICustomSuccessResponses | ICustomFailResponses).message
+              )
+              console.log('joinSuccess')
+              console.log((allowed as ICustomSuccessResponses | ICustomFailResponses).message)
+              socket.join(room.name as string)
+            }
+        } catch (error) {
+          socket.emit('createError', `Internal server error: ${error.message}`)
         }
 
         //   // Welcome to current user

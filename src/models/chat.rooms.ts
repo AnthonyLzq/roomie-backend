@@ -13,8 +13,7 @@ interface IChatRooms extends Document {
 const Users = new Schema({
   _id: {
     required: true,
-    type    : String,
-    unique  : true
+    type    : String
   },
   avatar: String,
   name  : {

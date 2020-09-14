@@ -29,27 +29,48 @@ class ChatRooms {
     | Promise<IChatRooms[]>
     | undefined {
     switch (type) {
-      case 'createChat':
+      case 'createChatRoom':
         return this._createChat()
       case 'initialLoadRooms':
         return this._initialLoadRooms()
-      case 'joinAChat':
+      case 'joinChatRoom':
         return this._joinAChat()
       default:
         return undefined
     }
   }
 
-  private async _createChat (): Promise<IChatRooms> {
-    const { isPublic, name, password, users } = this._args as DtoChatRooms
-    let chatRoom: IChatRooms
-    if (isPublic) chatRoom = new ChatRoomsModel({ isPublic, name, users })
-    else chatRoom = new ChatRoomsModel({ isPublic, name, password, users })
+  private async _createChat (): Promise<
+    ICustomSuccessResponses | ICustomFailResponses
+  > {
+    const { isPublic, maxUsers, name, password, users } = this._args as DtoChatRooms
 
     try {
-      const newChatRoom = await chatRoom.save()
+      const chatRoom = await ChatRoomsModel.findOne({ name: name as string })
 
-      return newChatRoom
+      if (!chatRoom) {
+        let newChatRoom: IChatRooms
+        if (isPublic as boolean)
+          newChatRoom = new ChatRoomsModel({
+            isPublic: isPublic as boolean,
+            maxUsers: maxUsers as number,
+            name    : name as string,
+            users   : users as IUsers[]
+          })
+        else
+          newChatRoom = new ChatRoomsModel({
+            isPublic: isPublic as boolean,
+            maxUsers: maxUsers as number,
+            name    : name as string,
+            password: password as string,
+            users   : users as IUsers[]
+          })
+        const result = await newChatRoom.save()
+
+        return { error: false, message: result }
+      }
+
+      return { error: true, message: [ECR.duplicatedChatRoom] }
     } catch (error) {
       console.error(error)
       throw new Error(ECR.problemCreatingAChatRoom)
@@ -96,8 +117,9 @@ class ChatRooms {
         if (userExists) errors.push(ECR.duplicatedUser)
 
         if (
+          !userExists &&
           requestedChatRoom.isPublic &&
-          requestedChatRoom.maxUsers > requestedChatRoom.users.length + 1
+          requestedChatRoom.maxUsers >= requestedChatRoom.users.length + 1
         ) {
           const updatedRoom = await this._updateChatAndReturnItWithSortedMessages(
             name as string,
@@ -106,7 +128,10 @@ class ChatRooms {
 
           return { error: false, message: updatedRoom[0] }
         }
-        if (requestedChatRoom.maxUsers > requestedChatRoom.users.length + 1) {
+        if (
+          !userExists &&
+          requestedChatRoom.maxUsers >= requestedChatRoom.users.length + 1
+        ) {
           if (password === requestedChatRoom.password) {
             const updatedRoom = await this._updateChatAndReturnItWithSortedMessages(
               name as string,
@@ -136,7 +161,8 @@ class ChatRooms {
     const updatedChatRoom = await ChatRoomsModel.aggregate([
       {
         $unwind: {
-          path: '$messages'
+          path                      : '$messages',
+          preserveNullAndEmptyArrays: true
         }
       },
       {
