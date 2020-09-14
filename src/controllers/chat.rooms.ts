@@ -1,5 +1,5 @@
-/* eslint-disable class-methods-use-this, no-extra-parens, max-len */
-import { DtoChatRooms, IUsers } from '../dto-interfaces/chat.room.dto'
+/* eslint-disable class-methods-use-this, no-extra-parens, max-len, no-underscore-dangle */
+import { DtoChatRooms, IMessages, IUsers } from '../dto-interfaces/chat.room.dto'
 import { IChatRooms, ChatRoomsModel } from '../models/chat.rooms'
 import { ErrorMessagesForChatRooms as ECR } from './errors/error.messages'
 
@@ -11,7 +11,8 @@ interface ICustomFailResponses extends ICustomResponses {
   message: string[]
 }
 interface ICustomSuccessResponses extends ICustomResponses {
-  message: IChatRooms
+  deletedChatRoom?: boolean
+  message?: IChatRooms
 }
 
 class ChatRooms {
@@ -24,26 +25,32 @@ class ChatRooms {
   public process (
     type: string
   ):
+    | Promise<void>
     | Promise<ICustomSuccessResponses | ICustomFailResponses>
     | Promise<IChatRooms>
     | Promise<IChatRooms[]>
     | undefined {
     switch (type) {
       case 'createChatRoom':
-        return this._createChat()
+        return this._createChatRoom()
       case 'initialLoadRooms':
         return this._initialLoadRooms()
       case 'joinChatRoom':
-        return this._joinAChat()
+        return this._joinChatRoom()
+      case 'leaveChatRoom':
+        return this._leaveChatRoom()
+      case 'saveChatMessage':
+        return this._saveChatMessage()
       default:
         return undefined
     }
   }
 
-  private async _createChat (): Promise<
+  private async _createChatRoom (): Promise<
     ICustomSuccessResponses | ICustomFailResponses
   > {
-    const { isPublic, maxUsers, name, password, users } = this._args as DtoChatRooms
+    const { isPublic, maxUsers, name, password, users } = this
+      ._args as DtoChatRooms
 
     try {
       const chatRoom = await ChatRoomsModel.findOne({ name: name as string })
@@ -99,7 +106,7 @@ class ChatRooms {
     }
   }
 
-  private async _joinAChat (): Promise<
+  private async _joinChatRoom (): Promise<
     ICustomSuccessResponses | ICustomFailResponses
   > {
     const { name, password, users } = this._args as DtoChatRooms
@@ -149,6 +156,73 @@ class ChatRooms {
     } catch (error) {
       console.error(error)
       throw new Error(ECR.problemValidatingIfTheUserCanEnter)
+    }
+  }
+
+  private async _leaveChatRoom (): Promise<
+    ICustomSuccessResponses | ICustomFailResponses
+  > {
+    const { name, users } = this._args as DtoChatRooms
+
+    const userToRemove = (users as IUsers[])[0]
+    console.log('userToRemove')
+    console.log(userToRemove)
+    const errors: string[] = []
+    try {
+      const updatedChatRoom = await ChatRoomsModel.findOneAndUpdate(
+        { name: name as string },
+        { $pull: { users: userToRemove } },
+        { new: true }
+      )
+
+      console.log('updatedChatRoom')
+      console.log(updatedChatRoom)
+
+      if (updatedChatRoom) {
+        if (updatedChatRoom.users.length === 0) {
+          await ChatRoomsModel.findOneAndRemove({ name: name as string })
+
+          return {
+            deletedChatRoom: true,
+            error          : false,
+            message        : updatedChatRoom
+          }
+        }
+
+        return {
+          deletedChatRoom: false,
+          error          : false,
+          message        : updatedChatRoom
+        }
+      }
+
+      errors.push(ECR.problemRemovingUserFromChat)
+
+      return { error: true, message: errors }
+    } catch (error) {
+      console.error(error)
+      throw new Error(ECR.problemRemovingUserFromChat)
+    }
+  }
+
+  private async _saveChatMessage (): Promise<void> {
+    const { messages, name } = this._args as DtoChatRooms
+    try {
+      await ChatRoomsModel.findOneAndUpdate(
+        { name: name as string },
+        {
+          $push: {
+            messages: {
+              _id      : (messages as IMessages[])[0]._id,
+              createdAt: (messages as IMessages[])[0].createdAt,
+              text     : (messages as IMessages[])[0].text,
+              user     : (messages as IMessages[])[0].user
+            }
+          }
+        }
+      )
+    } catch (error) {
+      console.error(ECR.problemWhileSavingMessage)
     }
   }
 

@@ -48,8 +48,11 @@ const ChatRooms = new Schema(
       type   : Boolean
     },
     maxUsers: Number,
-    messages: [Messages],
-    name    : {
+    messages: {
+      default: [],
+      type   : [Messages]
+    },
+    name: {
       required: true,
       type    : String
     },

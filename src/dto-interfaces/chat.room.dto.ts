@@ -6,6 +6,7 @@ export interface IUsers {
 export interface IMessages {
   _id      : string
   createdAt: Date
+  room?    : string
   text     : string
   user     : IUsers
 }

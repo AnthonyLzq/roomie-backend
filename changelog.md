@@ -1,9 +1,14 @@
 # Roomie
 
+- Implemented:
+  - Logic to send, broadcast and save messages.
+  - Logic to update the lobby when a user left a chat.
+  - Logic to delete a chat when all users are gone.
+
 ## Version 0.5.0
 
 - Implemented:
-  - Logic to update the looby when a user joins a chat.
+  - Logic to update the lobby when a user joins a chat.
 
 ## Version 0.4.0
 

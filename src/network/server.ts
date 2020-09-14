@@ -1,4 +1,4 @@
-/* eslint-disable max-len, class-methods-use-this, no-extra-parens */
+/* eslint-disable max-len, class-methods-use-this, no-extra-parens, no-underscore-dangle */
 import express from 'express'
 import http from 'http'
 import mongoose from 'mongoose'
@@ -7,7 +7,9 @@ import socketIO from 'socket.io'
 
 import { applyRoutes } from './routes'
 import {
-  DtoChatRooms
+  DtoChatRooms,
+  IMessages,
+  IUsers
 } from '../dto-interfaces/chat.room.dto'
 import {
   ChatRooms,
@@ -95,12 +97,8 @@ class Server {
       )
 
       socket.on('createChatRoom', async (room: DtoChatRooms): Promise<void> => {
-        // console.log('room')
-        // console.log(room)
         try {
           const createdRoom = await new ChatRooms(room).process('createChatRoom')
-          // console.log('createdRoom')
-          // console.log(createdRoom)
 
           if (createdRoom)
             if ((createdRoom as ICustomSuccessResponses | ICustomFailResponses).error)
@@ -108,8 +106,6 @@ class Server {
                 'createError',
                 (createdRoom as ICustomSuccessResponses | ICustomFailResponses).message
               )
-              // console.log('createError')
-              // console.log((createdRoom as ICustomSuccessResponses | ICustomFailResponses).message)
             else {
               const roomToReport = (createdRoom as ICustomSuccessResponses | ICustomFailResponses).message as IChatRooms
               const roomWithOutUselessInfo = {
@@ -121,23 +117,15 @@ class Server {
               socket.emit('createSuccess', roomToReport)
               io.emit('addRoomToLobby', roomWithOutUselessInfo)
               socket.join(room.name as string)
-              // console.log('createSuccess')
-              // console.log((createdRoom as ICustomSuccessResponses | ICustomFailResponses).message)
             }
         } catch (error) {
-          // console.log('createError')
-          // console.log(`Internal server error: ${error.message}`)
           socket.emit('createError', `Internal server error: ${error.message}`)
         }
       })
 
       socket.on('joinChatRoom', async (room: DtoChatRooms): Promise<void> => {
-        // console.log('room')
-        // console.log(room)
         try {
           const allowed = await new ChatRooms(room).process('joinChatRoom')
-          // console.log('allowed')
-          // console.log(allowed)
 
           if (allowed)
             if ((allowed as ICustomSuccessResponses | ICustomFailResponses).error)
@@ -145,8 +133,6 @@ class Server {
                 'joinError',
                 (allowed as ICustomSuccessResponses | ICustomFailResponses).message
               )
-              // console.log('joinError')
-              // console.log((allowed as ICustomSuccessResponses | ICustomFailResponses).message)
             else {
               const roomToReport = (allowed as ICustomSuccessResponses | ICustomFailResponses).message as IChatRooms
               const roomWithUpdatedInfo = {
@@ -155,53 +141,73 @@ class Server {
               }
               socket.emit('joinSuccess', roomToReport)
               io.emit('updateConnectedUsersInRoom', roomWithUpdatedInfo)
-              // console.log('joinSuccess')
-              // console.log((allowed as ICustomSuccessResponses | ICustomFailResponses).message)
               socket.join(room.name as string)
             }
         } catch (error) {
-          socket.emit('createError', `Internal server error: ${error.message}`)
+          socket.emit('joinError', `Internal server error: ${error.message}`)
         }
 
-        //   // Welcome to current user
-        //   socket.emit(
-        //     'message',
-        //     formatMessage({
-        //       text    : 'Welcome to Roomie!',
-        //       username: this._botName
-        //     })
-        //   )
+        // Listen for chat messages
+        socket.on('chatMessage', async (message: IMessages): Promise<void> => {
+          console.log('chatMessage')
+          console.log(message)
+          socket.broadcast.to(message.room as string).emit('message', {
+            _id : message._id,
+            text: message.text,
+            user: message.user
+          })
+          try {
+            await new ChatRooms({
+              messages: [{
+                _id      : message._id as string,
+                createdAt: message.createdAt as Date,
+                text     : message.text as string,
+                user     : message.user as IUsers
+              }] as IMessages[],
+              name: message.room as string
+            }).process('saveChatMessage')
+          } catch (error) {
+            socket.emit('saveMessageError', `Internal server error: ${error.message}`)
+          }
+        })
 
-        //   // Broadcast when a user connects to the chat room
-        //   socket.broadcast.to(user.room).emit(
-        //     'message',
-        //     formatMessage({
-        //       text    : `${user.username} has joined the chat`,
-        //       username: this._botName
-        //     })
-        //   )
+        // Broadcast when a user disconnects
+        socket.on('leaveChatRoom', async (currentRoom: DtoChatRooms) => {
+          console.log('currentRoom')
+          console.log(currentRoom)
+          try {
+            const updatedRoom = await new ChatRooms(currentRoom).process('leaveChatRoom')
+            console.log('leaveChatRoom')
+            console.log(updatedRoom)
 
-        //   // Send users and room info
-        //   io.to(user.room).emit('roomUsers', {
-        //     room : user.room,
-        //     users: getRoomUsers(user.room)
-        //   })
-        // })
-
-        // // Listen for chat messages
-        // socket.on('chatMessage', (message: string) => {
-        //   const { room, username } = getCurrentUser(socket.id) as IUsers
-
-        //   io.to(room as string).emit(
-        //     'message',
-        //     formatMessage({ text: message, username: username as string })
-        //   )
-        // })
-
-        // // Broadcast when a user disconnects
-        // socket.on('disconnect', () => {
-
-        // })
+            if (updatedRoom)
+              if ((updatedRoom as ICustomSuccessResponses | ICustomFailResponses).error) {
+                socket.emit(
+                  'leaveChatRoom',
+                  (updatedRoom as ICustomSuccessResponses | ICustomFailResponses).message
+                )
+                console.log('leaveChatRoom')
+                console.log((updatedRoom as ICustomSuccessResponses | ICustomFailResponses).message)
+              } else {
+                const roomToReport = updatedRoom as ICustomSuccessResponses
+                if (roomToReport.deletedChatRoom) {
+                  io.emit('deletedChatRoom', (roomToReport.message as IChatRooms).name)
+                  console.log('deletedChatRoom')
+                  console.log((roomToReport.message as IChatRooms).name)
+                } else {
+                  const roomWithUpdatedInfo = {
+                    connectedUsers: (roomToReport.message as IChatRooms).users.length,
+                    name          : (roomToReport.message as IChatRooms).name
+                  }
+                  io.emit('updateConnectedUsersInRoom', roomWithUpdatedInfo)
+                  console.log('updateConnectedUsersInRoom')
+                  console.log(roomWithUpdatedInfo)
+                }
+              }
+          } catch (error) {
+            socket.emit('leaveError', `Internal server error: ${error.message}`)
+          }
+        })
       })
     })
   }
