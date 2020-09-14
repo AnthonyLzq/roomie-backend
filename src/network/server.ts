@@ -193,6 +193,7 @@ class Server {
               const roomToReport = updatedRoom as ICustomSuccessResponses
               if (roomToReport.deletedChatRoom as boolean) {
                 io.emit('deletedChatRoom', (roomToReport.message as IChatRooms).name)
+                socket.leave(currentRoom.name as string)
                 console.log('deletedChatRoom')
                 console.log((roomToReport.message as IChatRooms).name)
               } else {
@@ -201,6 +202,7 @@ class Server {
                   name          : (roomToReport.message as IChatRooms).name
                 }
                 io.emit('updateConnectedUsersInRoom', roomWithUpdatedInfo)
+                socket.leave(currentRoom.name as string)
                 console.log('updateConnectedUsersInRoom')
                 console.log(roomWithUpdatedInfo)
               }

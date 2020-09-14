@@ -1,5 +1,10 @@
 # Roomie
 
+## Version 0.9.0
+
+- Implemented:
+  - Socket disconnection.
+
 ## Version 0.8.0
 
 - Implemented:
