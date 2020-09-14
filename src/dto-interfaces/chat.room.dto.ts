@@ -1,18 +1,18 @@
 export interface IUsers {
-  id  : string
+  _id  : string
   name: string
 }
 
 export interface IMessages {
+  _id      : string
   createdAt: Date
-  id       : string
   text     : string
   user     : IUsers
 }
 
 export interface DtoChatRooms {
-  id?      : string
   isPublic?: boolean
+  maxUsers?: number
   messages?: IMessages[]
   name?    : string
   password?: string

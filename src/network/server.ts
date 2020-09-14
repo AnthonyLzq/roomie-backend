@@ -6,9 +6,8 @@ import morgan from 'morgan'
 import socketIO from 'socket.io'
 
 import { applyRoutes } from './routes'
-// import { formatMessage } from '../utils/messages'
-import { IUsers } from '../utils/users'
-import { IChatRooms, userJoin } from '../utils/chat.room'
+import { DtoChatRooms, IMessages, IUsers } from '../dto-interfaces/chat.room.dto'
+import { ChatRooms } from '../controllers/chat.rooms'
 
 class Server {
   private _app: express.Application
@@ -83,16 +82,8 @@ class Server {
   // eslint-disable-next-line class-methods-use-this
   private _socketConnection (io: socketIO.Server): void {
     // Run when a client connect
-    io.on('connection', (socket: socketIO.Socket): void => {
-      let i = 0
-      const id = setInterval(() => {
-        if (i === 3) clearInterval(id)
-        socket.emit('message', {
-          message: 'Hello World from socket.io using connection!',
-          user   : 'Anthony'
-        })
-        i++
-      }, 3000)
+    io.on('connection', async (socket: socketIO.Socket): Promise<void> => {
+      socket.emit('initialLoadRooms', await new ChatRooms().process('initialLoadRooms'))
       // socket.on('createRoom', (obj: IChatRooms) => {
 
       // })
@@ -166,11 +157,11 @@ class Server {
       console.log(`Server running at port ${this._app.get('port')}`)
     )
 
-    // try {
-    //   this._mongo()
-    // } catch (error) {
-    //   console.error(error)
-    // }
+    try {
+      this._mongo()
+    } catch (error) {
+      console.error(error)
+    }
   }
 }
 

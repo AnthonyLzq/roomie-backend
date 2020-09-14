@@ -41,29 +41,34 @@ const Messages = new Schema({
   }
 })
 
-const ChatRooms = new Schema({
-  messages: [Messages],
-  name    : {
-    required: true,
-    type    : String
+const ChatRooms = new Schema(
+  {
+    messages: [Messages],
+    name    : {
+      required: true,
+      type    : String
+    },
+    password: {
+      required: false,
+      type    : String
+    },
+    peopleConnected: {
+      default: 1,
+      type   : Number
+    },
+    type: {
+      default: true,
+      type   : Boolean
+    },
+    users: {
+      required: true,
+      type    : [Users]
+    }
   },
-  password: {
-    required: false,
-    type    : String
-  },
-  peopleConnected: {
-    default: 1,
-    type   : Number
-  },
-  type: {
-    default: true,
-    type   : Boolean
-  },
-  users: {
-    required: true,
-    type    : [Users]
+  {
+    collection: 'chatRooms'
   }
-})
+)
 
 const ChatRoomsModel = model<IChatRooms>('chatRooms', ChatRooms)
 

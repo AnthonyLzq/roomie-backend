@@ -3,18 +3,20 @@ import { IChatRooms, ChatRoomsModel } from '../models/chat.rooms'
 import { ErrorMessagesForChatRooms as ECR } from './errors/error.messages'
 
 class ChatRooms {
-  private _args: DtoChatRooms
+  private _args: DtoChatRooms | null
 
-  constructor (args: DtoChatRooms) {
+  constructor (args: DtoChatRooms | null = null) {
     this._args = args
   }
 
   public process (
     type: string
-  ): Promise<{ allowed: boolean }> | Promise<IChatRooms> | undefined {
+  ): Promise<IChatRooms> | Promise<IChatRooms[]> | undefined {
     switch (type) {
       case 'createChat':
         return this._createChat()
+      case 'initialLoadRooms':
+        return this._initialLoadRooms()
       // case 'joinAChat':
       //   return this._joinAChat()
       default:
@@ -35,6 +37,29 @@ class ChatRooms {
     } catch (error) {
       console.error(error)
       throw new Error(ECR.problemCreatingAChatRoom)
+    }
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  private async _initialLoadRooms (): Promise<IChatRooms[]> {
+    try {
+      const chatRooms = await ChatRoomsModel.aggregate([
+        {
+          '$project': {
+            'connectedUsers': {
+              '$size': '$users'
+            },
+            'isPublic': true,
+            'maxUsers': true,
+            'name'    : true
+          }
+        }
+      ])
+
+      return chatRooms
+    } catch (error) {
+      console.error(error)
+      throw new Error(ECR.problemGettingAllTheChatsInTheInitialLoad)
     }
   }
 
