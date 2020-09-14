@@ -1,5 +1,10 @@
 # Roomie
 
+## Version 0.8.0
+
+- Implemented:
+  - Events isolated.
+
 ## Version 0.7.0
 
 - Implemented:
